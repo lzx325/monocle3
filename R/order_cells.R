@@ -75,23 +75,25 @@ order_cells <- function(cds,
   }
 
   if(is.null(root_cells) & is.null(root_pr_nodes)) {
-    assertthat::assert_that(interactive(),
-                            msg = paste("When not in interactive mode, either",
-                                        "root_pr_nodes or root_cells",
-                                        "must be provided."))
-  }
+    # assertthat::assert_that(interactive(),
+    #                         msg = paste("When not in interactive mode, either",
+    #                                     "root_pr_nodes or root_cells",
+    #                                     "must be provided."))
+    if(!interactive()){
+      message("lizx: The R interpreter is in non-interactive mode")
+    }
+
+  } 
   assertthat::assert_that(!all(c(!is.null(root_cells),
                                  !is.null(root_pr_nodes))),
                           msg = paste("Please specify either root_pr_nodes",
                                       "or root_cells, not both."))
 
   if (is.null(root_pr_nodes) & is.null(root_cells)){
-    if (interactive()){
-      root_pr_nodes <-
-        select_trajectory_roots(cds, reduction_method = reduction_method)
-      if(length(root_pr_nodes) == 0) {
-        stop("No root node was chosen!")
-      }
+    root_pr_nodes <-
+      select_trajectory_roots(cds, reduction_method = reduction_method)
+    if(length(root_pr_nodes) == 0) {
+      stop("No root node was chosen!")
     }
   } else if(!is.null(root_cells)){
     closest_vertex <- cds@principal_graph_aux[[

@@ -25,10 +25,14 @@ choose_cells <- function(cds,
                                        ", cluster_cells, and learn_graph ",
                                        "before running choose_cells"))
   assertthat::assert_that(is.logical(return_list))
-  assertthat::assert_that(interactive(),
-                          msg = paste("choose_cells only works in",
-                                      "interactive mode."))
-
+  
+  # assertthat::assert_that(interactive(),
+  #                         msg = paste("choose_cells only works in",
+  #                                     "interactive mode."))
+  # lizx:
+  if(!interactive()){
+    message("lizx: The R interpreter is in non-interactive mode")
+  }
 
   reduced_dims <- as.data.frame(reducedDims(cds)[[reduction_method]])
   names(reduced_dims)[1:2] <- c("V1", "V2")
@@ -183,13 +187,16 @@ choose_graph_segments <- function(cds,
   if (all(c(is.null(starting_pr_node),
             is.null(ending_pr_nodes)))) {
     interactive <- TRUE
-    assertthat::assert_that(interactive(),
-                            msg = paste("Interactive mode not working on",
-                                        "this system (known issue with",
-                                        "iPython notebooks and on remote",
-                                        "servers). Please provide starting",
-                                        "and ending principal nodes - see",
-                                        "documentation."))
+    # assertthat::assert_that(interactive(),
+    #                         msg = paste("Interactive mode not working on",
+    #                                     "this system (known issue with",
+    #                                     "iPython notebooks and on remote",
+    #                                     "servers). Please provide starting",
+    #                                     "and ending principal nodes - see",
+    #                                     "documentation."))
+    if(!interactive()){
+      message("lizx: The R interpreter is in non-interactive mode")
+    }
   } else {
     interactive <- FALSE
     assertthat::assert_that(!is.null(starting_pr_node),

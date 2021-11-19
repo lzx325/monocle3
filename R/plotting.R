@@ -995,7 +995,10 @@ plot_genes_in_pseudotime <-function(cds_subset,
 
   cds_exprs <- SingleCellExperiment::counts(cds_subset)
   cds_exprs <- Matrix::t(Matrix::t(cds_exprs)/size_factors(cds_subset))
-  cds_exprs <- reshape2::melt(round(as.matrix(cds_exprs)))
+  # lizx: 
+  # cds_exprs <- reshape2::melt(round(as.matrix(cds_exprs)))
+  cds_exprs@x <- round(10000*cds_exprs@x)/10000
+  cds_exprs <- reshape2::melt(as.matrix(cds_exprs))
 
   if (is.null(min_expr)) {
     min_expr <- 0
@@ -1039,8 +1042,12 @@ plot_genes_in_pseudotime <-function(cds_subset,
                              })
   cds_exprs <- merge(cds_exprs, expectation)
 
-  cds_exprs$expression[cds_exprs$expression < min_expr] <- min_expr
-  cds_exprs$expectation[cds_exprs$expectation < min_expr] <- min_expr
+  # lizx: 
+  # cds_exprs$expression[cds_exprs$expression < min_expr] <- min_expr
+  # cds_exprs$expectation[cds_exprs$expectation < min_expr] <- min_expr
+
+  cds_exprs$expression[cds_exprs$expression < min_expr] <- NA
+  cds_exprs$expectation[cds_exprs$expectation < min_expr] <- NA
   if (!is.null(panel_order)) {
     cds_exprs$feature_label <- factor(cds_exprs$feature_label,
                                       levels = panel_order)
