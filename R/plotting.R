@@ -561,6 +561,7 @@ plot_cells <- function(cds,
     } else {
       markers = genes
     }
+    
 	markers_rowData <- rowData(cds)[(rowData(cds)$gene_short_name %in% markers) |
 							        (row.names(rowData(cds)) %in% markers),,drop=FALSE]
 	markers_rowData <- as.data.frame(markers_rowData)
@@ -569,8 +570,9 @@ plot_cells <- function(cds,
     }
     if (nrow(markers_rowData) >= 1) {
       cds_exprs <- SingleCellExperiment::counts(cds)[row.names(markers_rowData), ,drop=FALSE]
+      # lizx:
       cds_exprs <- Matrix::t(Matrix::t(cds_exprs)/size_factors(cds))
-
+      print(max(cds_exprs))
       if (!is.null(dim(genes)) && dim(genes) >= 2){
         genes = as.data.frame(genes)
         row.names(genes) = genes[,1]
@@ -906,11 +908,18 @@ plot_genes_in_pseudotime <-function(cds_subset,
                                     trend_formula="~ splines::ns(pseudotime, df=3)",
                                     label_by_short_name=TRUE,
                                     vertical_jitter=NULL,
-                                    horizontal_jitter=NULL){
+                                    horizontal_jitter=NULL,
+                                    pseudotime_col=NULL,
+                                    round_interval=1){
   assertthat::assert_that(methods::is(cds_subset, "cell_data_set"))
-  tryCatch({pseudotime(cds_subset)}, error = function(x) {
+  if(is.null(pseudotime_col)){
+    tryCatch({pseudotime(cds_subset)}, error = function(x) {
     stop(paste("No pseudotime calculated. Must call order_cells first."))})
-  colData(cds_subset)$pseudotime <- pseudotime(cds_subset)
+    colData(cds_subset)$pseudotime <- pseudotime(cds_subset)
+  } else{
+    colData(cds_subset)$pseudotime <- colData(cds_subset)[,pseudotime_col]
+  }
+  
   if(!is.null(min_expr)) {
     assertthat::assert_that(assertthat::is.number(min_expr))
   }
@@ -992,13 +1001,15 @@ plot_genes_in_pseudotime <-function(cds_subset,
   f_id <- NA
   Cell <- NA
   cds_subset = cds_subset[,is.finite(colData(cds_subset)$pseudotime)]
-
   cds_exprs <- SingleCellExperiment::counts(cds_subset)
   cds_exprs <- Matrix::t(Matrix::t(cds_exprs)/size_factors(cds_subset))
-  # lizx: 
-  # cds_exprs <- reshape2::melt(round(as.matrix(cds_exprs)))
-  cds_exprs@x <- round(10000*cds_exprs@x)/10000
-  cds_exprs <- reshape2::melt(as.matrix(cds_exprs))
+  # lizx:
+  cat("maximum expression value:", max(cds_exprs), "\n")
+  flush.console()
+  
+  # lizx: fix rounding
+  cds_exprs <- reshape2::melt(round(as.matrix(cds_exprs)/round_interval)*round_interval)
+
 
   if (is.null(min_expr)) {
     min_expr <- 0
@@ -1029,10 +1040,9 @@ plot_genes_in_pseudotime <-function(cds_subset,
 
   new_data <- data.frame(pseudotime = colData(cds_subset)$pseudotime)
   model_tbl = fit_models(cds_subset, model_formula_str = trend_formula)
-
+ 
   model_expectation <- model_predictions(model_tbl,
                                          new_data = colData(cds_subset))
-
   colnames(model_expectation) <- colnames(cds_subset)
   expectation <- plyr::ddply(cds_exprs, plyr::.(f_id, Cell),
                              function(x) {
@@ -1043,15 +1053,17 @@ plot_genes_in_pseudotime <-function(cds_subset,
   cds_exprs <- merge(cds_exprs, expectation)
 
   # lizx: 
-  # cds_exprs$expression[cds_exprs$expression < min_expr] <- min_expr
-  # cds_exprs$expectation[cds_exprs$expectation < min_expr] <- min_expr
+  cds_exprs$expression[cds_exprs$expression < min_expr] <- min_expr
+  cds_exprs$expectation[cds_exprs$expectation < min_expr] <- min_expr
 
-  cds_exprs$expression[cds_exprs$expression < min_expr] <- NA
-  cds_exprs$expectation[cds_exprs$expectation < min_expr] <- NA
   if (!is.null(panel_order)) {
     cds_exprs$feature_label <- factor(cds_exprs$feature_label,
                                       levels = panel_order)
   }
+
+  # lizx:
+  cat("#(>min_expr): ", sum(cds_exprs[,"expression"]>min_expr),"\n")
+  flush.console()
   q <- ggplot(aes(pseudotime, expression), data = cds_exprs)
 
 
@@ -1082,7 +1094,7 @@ plot_genes_in_pseudotime <-function(cds_subset,
 
   q <- q + xlab("pseudotime")
   q <- q + monocle_theme_opts()
-  q
+  list(q,cds_exprs)
 }
 
 #' Plots the percentage of variance explained by the each component based on
